@@ -16,7 +16,7 @@ con = sqlite3.connect("kayit.db")
 cursor = con.cursor()
 
 def tablo_oluştur():
-    cursor.execute("CREATE TABLE IF NOT EXISTS kayit (Date TEXT)") # Sorguyu çalıştırıyoruz.
+    cursor.execute("CREATE TABLE IF NOT EXISTS kayit (Date TEXT, Name Text, Tamamlanma INT, Süre INT)") # Sorguyu çalıştırıyoruz.
     cursor.execute("CREATE TABLE IF NOT EXISTS tabs (Tab_Name TEXT, Tab_Time INT)")
     con.commit()
 
@@ -109,7 +109,6 @@ class PomodoroTimer:
             t.start()
             self.running = True
 
-
     def baslat(self):
         self.duraklat = False
         self.bitir = False
@@ -149,7 +148,18 @@ class PomodoroTimer:
         self.running = False
 
     def kaydet(self):  # Close Event; Save Data
-        print("kaydedildi")
+        date = datetime.date.today()
+        """con = sqlite3.connect("kayit.db")
+
+        cursor = con.cursor()
+
+        def veri_ekle():
+            cursor.execute("Insert into kayit Values(?,?,?,?)",(date,name,tamamlanma,count.seconds/60))
+            con.commit()
+
+        veri_ekle()
+
+        con.close()"""
     
     def confirm(self):  # Close Event Handling
         ans = askyesno(title='Exit', message='Kapatmak mı istiyorsun?')
@@ -235,19 +245,3 @@ class PomodoroTimer:
     
 timer = PomodoroTimer()
 
-
-date = datetime.date.today()
-
-"""con = sqlite3.connect("kayit.db")
-
-cursor = con.cursor()
-
-
-
-def veri_ekle():
-    cursor.execute("Insert into kayit Values(?)",(date))
-    con.commit()
-
-veri_ekle()
-
-con.close()"""
