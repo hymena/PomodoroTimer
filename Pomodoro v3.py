@@ -4,11 +4,12 @@ import threading
 from tkinter import ttk
 from tkinter import *
 from tkinter.messagebox import askyesno
+import tkinter
 import sqlite3
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from PIL import ImageTk, Image
 
 
 con = sqlite3.connect("kayit.db")
@@ -25,6 +26,39 @@ tablo_oluştur()
 con.close()
 
 
+class ScrollableImage(tkinter.Frame):
+    def __init__(self, master=None, **kw):
+        self.image = kw.pop('image', None)
+        sw = kw.pop('scrollbarwidth', 10)
+        super(ScrollableImage, self).__init__(master=master, **kw)
+        self.cnvs = tkinter.Canvas(self, highlightthickness=0, **kw)
+        self.cnvs.create_image(0, 0, anchor='nw', image=self.image)
+        # Vertical and Horizontal scrollbars
+        self.v_scroll = tkinter.Scrollbar(self, orient='vertical', width=sw)
+        self.h_scroll = tkinter.Scrollbar(self, orient='horizontal', width=sw)
+        # Grid and configure weight.
+        self.cnvs.grid(row=0, column=0,  sticky='nsew')
+        self.h_scroll.grid(row=1, column=0, sticky='ew')
+        self.v_scroll.grid(row=0, column=1, sticky='ns')
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        # Set the scrollbars to the canvas
+        self.cnvs.config(xscrollcommand=self.h_scroll.set, 
+                           yscrollcommand=self.v_scroll.set)
+        # Set canvas view to the scrollbars
+        self.v_scroll.config(command=self.cnvs.yview)
+        self.h_scroll.config(command=self.cnvs.xview)
+        # Assign the region to be scrolled 
+        self.cnvs.config(scrollregion=self.cnvs.bbox('all'))
+        self.cnvs.bind_class(self.cnvs, "<MouseWheel>", self.mouse_scroll)
+
+    def mouse_scroll(self, evt):
+        if evt.state == 0 :
+            self.cnvs.yview_scroll(int(-1*(evt.delta/120)), 'units') # For windows
+        if evt.state == 1:
+            self.cnvs.xview_scroll(int(-1*(evt.delta/120)), 'units') # For windows
+
+
 class Tab:
     def __init__(self,tab_name,minute,notebook) -> None:
         self.name = tab_name
@@ -36,13 +70,14 @@ class Tab:
         self.counter_label = ttk.Label(self.tab, text= tab_name + " Tamamlandı: 0", font=("Ubuntu", 16))
         self.counter_label.pack(pady=10)
 
+
 class PomodoroTimer:
 
 
     def __init__(self):
         # windows init stuf 
         self.root = Tk()
-        self.root.geometry("600x400")
+        self.root.geometry("800x600")
         self.root.title("Pomodoro Timer")
         
         
@@ -63,8 +98,34 @@ class PomodoroTimer:
         records_tabs = cursor.fetchall()
         con.commit()
 
-        con.close()
+        cursor.execute("SELECT Date, Süre FROM kayit")
+        graph_values = cursor.fetchall()
+        con.commit()
 
+        self.time_value = {}
+        
+        
+        for i,j in graph_values:
+            if not i in self.time_value:
+                self.time_value[i] = j
+            else:
+                self.time_value[i] += j
+        
+        self.graph_date = list(self.time_value.keys())
+        self.graph_time = list(self.time_value.values())
+        self.date_filler_array = []
+        for j in range(0,len(self.graph_date)):
+            self.date_filler_array.append(j)
+        
+        
+        plt.xticks(self.date_filler_array, self.graph_date)
+        plt.bar(self.date_filler_array,self.graph_time)
+        plt.ioff()
+        plt.savefig("dateVStime")
+        plt.pause(0.5)
+                
+        con.close()
+        
         for i in records_tabs:
             self.Tabs[i[0]] = i[1]
         
@@ -91,12 +152,18 @@ class PomodoroTimer:
         self.sil_button = ttk.Button(self.grid_layout, text= 'Görevi Sil', command= self.gorev_sil)
         self.sil_button.grid(row=0, column=4)
         
-        """self.canvas = FigureCanvasTkAgg(fig, master = self.root)
-        self.canvas.get_tk_widget().pack(pady=10)"""
-        
         self.duraklat = False
         self.running = False
         self.bitir = False
+        
+        """self.graph_tab = ttk.Frame(self.notebook)
+        img = tkinter.PhotoImage(file="dateVStime.png")
+        image_window = ScrollableImage(self.graph_tab, image=img, scrollbarwidth=6, 
+                               width=200, height=200)
+        image_window.pack(fill='both', expand= 1)"""
+        
+        """self.notebook.add(self.graph_tab, text= "Veri Grafiği")"""
+        
         
         self.root.protocol("WM_DELETE_WINDOW", self.confirm)
         self.root.mainloop()
@@ -108,6 +175,7 @@ class PomodoroTimer:
             t = threading.Thread(target=self.baslat)
             t.start()
             self.running = True
+
 
     def baslat(self):
         self.duraklat = False
@@ -128,6 +196,7 @@ class PomodoroTimer:
             self.tabs[timer_id].seconds = 60 * self.Tabs.get(self.tabs[timer_id].name)
             self.tabs[timer_id].counter_label.config(text=f"{self.tabs[timer_id].name} Tamamlandı: {self.tabs[timer_id].count}")
 
+
     def duraklat_clock(self):
         duraklat_id = self.notebook.index(self.notebook.select()) 
         self.duraklat = True
@@ -136,6 +205,7 @@ class PomodoroTimer:
         self.running = False
         
         time.sleep(0.5)
+
 
     def bitir_clock(self):
         bitir_id = self.notebook.index(self.notebook.select())
@@ -147,29 +217,56 @@ class PomodoroTimer:
         time.sleep(0.5)
         self.running = False
 
+
     def kaydet(self):  # Close Event; Save Data
         date = datetime.date.today()
-        """con = sqlite3.connect("kayit.db")
-
-        cursor = con.cursor()
-
-        def veri_ekle():
-            cursor.execute("Insert into kayit Values(?,?,?,?)",(date,name,tamamlanma,count.seconds/60))
+        
+        for i in range (0,len(self.tabs)):
+            old_count = 0
+            new_sure = 0
+            count = self.tabs[i].count
+            sure = int(self.tabs[i].seconds / 60)
+            name = self.tabs[i].name
+            
+            con = sqlite3.connect("kayit.db")
+            cursor = con.cursor()
+            
+            cursor.execute("SELECT Tamamlanma FROM kayit WHERE Date = ? and Name = ?",(date,name))
+            old_count = cursor.fetchone()
             con.commit()
+            
+            cursor.execute("SELECT Süre FROM kayit WHERE Date = ? and Name = ?",(date,name))
+            old_sure = cursor.fetchone()
+            con.commit()
+            
+            if old_count is not None:
+                new_count = int(count + old_count[0])
+                new_sure = int(sure*count + old_sure[0])
 
-        veri_ekle()
+                cursor.execute("UPDATE kayit SET Tamamlanma = ? WHERE Date = ? AND Name = ?",(new_count,date, name))
+                con.commit()
+            
+                cursor.execute("UPDATE kayit SET Süre = ? WHERE Date = ? AND Name = ?",(new_sure,date, name))
+                con.commit()
+                
+            else:
+                cursor.execute("Insert into kayit Values(?,?,?,?)",(date,name,count,count*sure))
+                con.commit()
+                
+                
+            con.close()
 
-        con.close()"""
-    
+
     def confirm(self):  # Close Event Handling
         ans = askyesno(title='Exit', message='Kapatmak mı istiyorsun?')
         if ans:
             self.kaydet()
             self.root.destroy()
 
+
     def gorev_ekle(self):
         self.gorev = Tk()
-        self.gorev.geometry("400x100")
+        self.gorev.geometry("600x300")
         self.gorev.title("Görev Ekle")
 
         self.grid_layout_gorev = ttk.Frame(self.gorev)
@@ -189,7 +286,8 @@ class PomodoroTimer:
         
         self.gorev_ekle_button = ttk.Button(self.grid_layout_gorev, text= 'Görevi Ekle', command= self.gorev_id_input)
         self.gorev_ekle_button.grid(row=2,column=2)
-        
+
+    
     def refresh_ekle(self, name_entry, time_entry):
         self.Tabs[name_entry] = int(time_entry)
         tab = Tab(name_entry,int(time_entry),self.notebook)
@@ -197,17 +295,20 @@ class PomodoroTimer:
         self.notebook.add(tab.tab,text = name_entry)
         
         self.refresh()
-        
+
+       
     def refresh_sil(self, name_entry, tab_id):
         self.notebook.forget(self.notebook.index(self.notebook.select()))
         self.Tabs.pop(name_entry)
         self.tabs.pop(tab_id)
         
         self.refresh()
+
           
     def refresh(self):
         self.root.update()
         self.root.update_idletasks()
+
     
     def gorev_id_input(self):
         tab_name_input = self.name_entry.get()
@@ -224,6 +325,7 @@ class PomodoroTimer:
         
         self.gorev.destroy()
         self.refresh_ekle(tab_name_input,tab_time_input)
+
                          
     def gorev_sil(self):
         sil_id = self.notebook.index(self.notebook.select())
