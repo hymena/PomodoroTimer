@@ -13,7 +13,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 con = sqlite3.connect("kayit.db")
 
 cursor = con.cursor()
-
+print("hello there")
 def tablo_oluştur():
     cursor.execute("CREATE TABLE IF NOT EXISTS kayit (Date TEXT, Ders INT, Kitap INT, Tarih INT, Arapça INT, Kuran INT, Ders_Süresi INT, Kitap_Süresi INT, Tarih_Süresi INT, Arapca_Süresi INT, Kuran_Süresi INT, Toplam_Süre INT)") # Sorguyu çalıştırıyoruz.
     con.commit()
