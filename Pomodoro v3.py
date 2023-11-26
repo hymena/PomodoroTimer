@@ -52,6 +52,10 @@ class ScrollableImage(tkinter.Frame):
         self.cnvs.config(scrollregion=self.cnvs.bbox('all'))
         self.cnvs.bind_class(self.cnvs, "<MouseWheel>", self.mouse_scroll)
 
+    def update_img(self,new_img):
+        self.image = new_img
+        self.cnvs.create_image(0,0,anchor='nw', image=self.image)
+
     def mouse_scroll(self, evt):
         if evt.state == 0 :
             self.cnvs.yview_scroll(int(-1*(evt.delta/120)), 'units') # For windows
@@ -89,50 +93,7 @@ class PomodoroTimer:
         self.tabs =[]
 
         self.Tabs = {}
-
-        con = sqlite3.connect("kayit.db")
-
-        cursor = con.cursor()
-
-        cursor.execute("SELECT Tab_Name, Tab_Time FROM tabs")
-        records_tabs = cursor.fetchall()
-        con.commit()
-
-        cursor.execute("SELECT Date, Süre FROM kayit")
-        graph_values = cursor.fetchall()
-        con.commit()
-
-        self.time_value = {}
-        
-        
-        for i,j in graph_values:
-            if not i in self.time_value:
-                self.time_value[i] = j
-            else:
-                self.time_value[i] += j
-        
-        self.graph_date = list(self.time_value.keys())
-        self.graph_time = list(self.time_value.values())
-        self.date_filler_array = []
-        for j in range(0,len(self.graph_date)):
-            self.date_filler_array.append(j)
-        
-        
-        plt.xticks(self.date_filler_array, self.graph_date)
-        plt.bar(self.date_filler_array,self.graph_time)
-        plt.ioff()
-        plt.savefig("dateVStime")
-        plt.pause(0.5)
-                
-        con.close()
-        
-        for i in records_tabs:
-            self.Tabs[i[0]] = i[1]
-        
-        for tab_name,minute in self.Tabs.items():
-            tab = Tab(tab_name,minute,self.notebook)
-            self.tabs.append(tab)
-            self.notebook.add(tab.tab,text = tab_name)
+    
 
         self.grid_layout = ttk.Frame(self.root)
         self.grid_layout.pack(pady=10)
@@ -156,19 +117,60 @@ class PomodoroTimer:
         self.running = False
         self.bitir = False
         
-        """self.graph_tab = ttk.Frame(self.notebook)
+        self.graph_tab = ttk.Frame(self.notebook)
         img = tkinter.PhotoImage(file="dateVStime.png")
-        image_window = ScrollableImage(self.graph_tab, image=img, scrollbarwidth=6, 
-                               width=200, height=200)
-        image_window.pack(fill='both', expand= 1)"""
+        self.image_window = ScrollableImage(self.graph_tab, image=img, scrollbarwidth=6,width=200, height=200)
+        self.image_window.pack(fill='both', expand= 1)
         
-        """self.notebook.add(self.graph_tab, text= "Veri Grafiği")"""
+        records_tabs = self.fetch_and_graph()
+
+        for i in records_tabs:
+            self.Tabs[i[0]] = i[1]
         
-        
+        for tab_name,minute in self.Tabs.items():
+            tab = Tab(tab_name,minute,self.notebook)
+            self.tabs.append(tab)
+            self.notebook.add(tab.tab,text = tab_name)
+            
+        self.notebook.add(self.graph_tab, text= "Veri Grafiği")
         self.root.protocol("WM_DELETE_WINDOW", self.confirm)
         self.root.mainloop()
                 
 
+    def fetch_and_graph(self):
+        con = sqlite3.connect("kayit.db")
+        cursor = con.cursor()
+        cursor.execute("SELECT Tab_Name, Tab_Time FROM tabs")
+        records_tabs = cursor.fetchall()
+        con.commit()
+        cursor.execute("SELECT Date, Süre FROM kayit")
+        graph_values = cursor.fetchall()
+        con.commit()
+        self.time_value = {}
+
+        for i,j in graph_values:
+            if not i in self.time_value:
+                self.time_value[i] = j
+            else:
+                self.time_value[i] += j
+        
+        self.graph_date = list(self.time_value.keys())
+        self.graph_time = list(self.time_value.values())
+        self.date_filler_array = []
+        for j in range(0,len(self.graph_date)):
+            self.date_filler_array.append(j)
+        
+        plt.xticks(self.date_filler_array, self.graph_date)
+        plt.bar(self.date_filler_array,self.graph_time)
+        plt.ioff()
+        plt.savefig("dateVStime")
+        plt.close()
+        plt.pause(0.5)              
+        con.close()
+
+        new_img = tkinter.PhotoImage(file="dateVStime.png")
+        self.image_window.update_img(new_img)
+        return records_tabs
         
     def baslat_thread(self):
         if not self.running:
@@ -216,6 +218,9 @@ class PomodoroTimer:
         self.tabs[bitir_id].seconds = self.Tabs.get(self.tabs[bitir_id].name) * 60
         time.sleep(0.5)
         self.running = False
+        self.kaydet()
+        self.fetch_and_graph()
+        self.refresh()
 
 
     def kaydet(self):  # Close Event; Save Data
@@ -260,7 +265,7 @@ class PomodoroTimer:
     def confirm(self):  # Close Event Handling
         ans = askyesno(title='Exit', message='Kapatmak mı istiyorsun?')
         if ans:
-            self.kaydet()
+            #self.kaydet()
             self.root.destroy()
 
 
