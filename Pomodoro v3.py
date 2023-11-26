@@ -121,7 +121,8 @@ class PomodoroTimer:
         img = tkinter.PhotoImage(file="dateVStime.png")
         self.image_window = ScrollableImage(self.graph_tab, image=img, scrollbarwidth=6,width=200, height=200)
         self.image_window.pack(fill='both', expand= 1)
-        
+        self.notebook.add(self.graph_tab, text= "Veri Grafiği")
+
         records_tabs = self.fetch_and_graph()
 
         for i in records_tabs:
@@ -132,7 +133,7 @@ class PomodoroTimer:
             self.tabs.append(tab)
             self.notebook.add(tab.tab,text = tab_name)
             
-        self.notebook.add(self.graph_tab, text= "Veri Grafiği")
+        
         self.root.protocol("WM_DELETE_WINDOW", self.confirm)
         self.root.mainloop()
                 
@@ -182,7 +183,7 @@ class PomodoroTimer:
     def baslat(self):
         self.duraklat = False
         self.bitir = False
-        timer_id = self.notebook.index(self.notebook.select()) 
+        timer_id = self.notebook.index(self.notebook.select()) - 1
         
 
         while self.tabs[timer_id].seconds > 0 and not self.duraklat:
@@ -195,12 +196,12 @@ class PomodoroTimer:
                     break
         if not self.duraklat and not self.bitir:
             self.tabs[timer_id].count += 1
-            self.tabs[timer_id].seconds = 60 * self.Tabs.get(self.tabs[timer_id].name)
+            #self.tabs[timer_id].seconds = 60 * self.Tabs.get(self.tabs[timer_id].name)
             self.tabs[timer_id].counter_label.config(text=f"{self.tabs[timer_id].name} Tamamlandı: {self.tabs[timer_id].count}")
 
 
     def duraklat_clock(self):
-        duraklat_id = self.notebook.index(self.notebook.select()) 
+        duraklat_id = self.notebook.index(self.notebook.select()) -1 
         self.duraklat = True
         self.bitir = False
         
@@ -210,17 +211,18 @@ class PomodoroTimer:
 
 
     def bitir_clock(self):
-        bitir_id = self.notebook.index(self.notebook.select())
-        self.duraklat = True
-        self.bitir = True
+        bitir_id = self.notebook.index(self.notebook.select()) -1 
+        if self.tabs[bitir_id].seconds <= 1:
+            self.duraklat = True
+            self.bitir = True
 
-        self.tabs[bitir_id].timer_label.config(text=f"{self.Tabs.get(self.tabs[bitir_id].name)}:00")
-        self.tabs[bitir_id].seconds = self.Tabs.get(self.tabs[bitir_id].name) * 60
-        time.sleep(0.5)
-        self.running = False
-        self.kaydet()
-        self.fetch_and_graph()
-        self.refresh()
+            self.tabs[bitir_id].timer_label.config(text=f"{self.Tabs.get(self.tabs[bitir_id].name)}:00")
+            self.tabs[bitir_id].seconds = self.Tabs.get(self.tabs[bitir_id].name) * 60
+            time.sleep(0.5)
+            self.running = False
+            self.kaydet()
+            self.fetch_and_graph()
+            self.refresh()
 
 
     def kaydet(self):  # Close Event; Save Data
@@ -303,7 +305,7 @@ class PomodoroTimer:
 
        
     def refresh_sil(self, name_entry, tab_id):
-        self.notebook.forget(self.notebook.index(self.notebook.select()))
+        self.notebook.forget(self.notebook.index(self.notebook.select())) 
         self.Tabs.pop(name_entry)
         self.tabs.pop(tab_id)
         
@@ -333,8 +335,8 @@ class PomodoroTimer:
 
                          
     def gorev_sil(self):
-        sil_id = self.notebook.index(self.notebook.select())
-        tab_name_text = self.notebook.tab(sil_id)['text']
+        sil_id = self.notebook.index(self.notebook.select()) - 1 
+        tab_name_text = self.notebook.tab(sil_id + 1)['text']
         tab_time_value = int(self.tabs[sil_id].seconds/60)
         
         
