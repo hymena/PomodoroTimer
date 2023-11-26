@@ -3,13 +3,13 @@ import datetime
 import threading
 from tkinter import ttk
 from tkinter import *
-from tkinter.messagebox import askyesno
+from tkinter.messagebox import askyesno, showinfo
 import tkinter
 import sqlite3
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import ImageTk, Image
+import pygame
 
 
 con = sqlite3.connect("kayit.db")
@@ -198,7 +198,11 @@ class PomodoroTimer:
             self.tabs[timer_id].count += 1
             #self.tabs[timer_id].seconds = 60 * self.Tabs.get(self.tabs[timer_id].name)
             self.tabs[timer_id].counter_label.config(text=f"{self.tabs[timer_id].name} Tamamlandı: {self.tabs[timer_id].count}")
-
+            pygame.mixer.init()
+            pygame.mixer.music.load("Notification.mp3")
+            pygame.mixer.music.play(loops=0)
+            showinfo("", "Görev süresi doldu")
+            
 
     def duraklat_clock(self):
         duraklat_id = self.notebook.index(self.notebook.select()) -1 
@@ -350,7 +354,7 @@ class PomodoroTimer:
         con.close()
         
         self.refresh_sil(tab_name_text, sil_id)
+
     
     
 timer = PomodoroTimer()
-
